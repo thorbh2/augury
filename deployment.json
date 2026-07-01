@@ -1,0 +1,31 @@
+{
+  "project": "project-26-augury",
+  "name": "AuguryScenario",
+  "network": "studionet",
+  "chainId": 61999,
+  "rpc": "https://studio.genlayer.com/api",
+  "explorer": "https://explorer-studio.genlayer.com",
+  "contractAddress": "0xA83926e5B73b8e64fF3Cbc0A464FF793001706eD",
+  "deployTxHash": "0x0ba663aaf02469941d5c7d5e96a502e3fa8781a1c60326731ddb73fa06e6b245",
+  "contractExplorer": "https://explorer-studio.genlayer.com/contracts/0xA83926e5B73b8e64fF3Cbc0A464FF793001706eD",
+  "deployer": "0x9DB08Cd0bd95B8Cd4E94B6574e5E0257aDAc490d",
+  "deployedAt": "2026-06-22T21:32:33.257Z",
+  "statusName": 7,
+  "smoke": {
+    "create_scenario": "0x263795ddc9944487a05490ba2dbb78cb07c958e1f1b75f64894e2aefd8948d99",
+    "add_signal_1": "0xfd77c1b6410c2f2077dba4a494e7e68dedd03398a10808aa1c03bdbe7e9b363d",
+    "add_signal_2": "0xa3a19dd3783b91d04caff86bec48a852e8335a52787bba8ae3821cb2ad57c8e3",
+    "add_assumption": "0xfada4dddc963fc8e7b3a472d56d1907e1e09f5ba60ee7537209b8f6ffa61be99",
+    "gather_signals": "0xf3777c61fa5f797315cf14f0c4c7bda501497d865098e36e8f85bbc8408ca193",
+    "open_prediction_round": "0xe4ac7d4e6d5f0dc6f1358cc04906d449e5992e5b6140ea296b2f44654ee81dae",
+    "review_outcome": "0x299a63d0bfbc8e2399176abe65eaa29a9e69a935ef6200a7e6d4131a94df93b8",
+    "open_challenge_window": "0xc05bcf3cc2076b95bbf8ec5476757c0284c7ffe53ccc119a8cfb3a87a3029696",
+    "submit_challenge": "0xd68f9484f127a5c89978ecec4b7c8fb00b4e609aca622b2c79226fc5d831836c",
+    "resolve_challenge": "0x918a0581d312703dc6dfcac6e29d2383406718629dda89ba194f7f6d615dc7e3",
+    "finalize_scenario": "0x9ac5e0af4557cb0c847f041cc7624f2ee2b3c72284a1fe1410a613e0001d5e5a",
+    "archive_scenario": "0xa4214f4333782ea4fd010357c378641dc0f4891425670931c467e135dc6d8516",
+    "recalculate_reputation": "0xb537c553f43e40ed059f1edbf1f86748455ff5044f0512372d76ff2ef92281d1",
+    "scenarioId": "0",
+    "challengeId": "0"
+  }
+}

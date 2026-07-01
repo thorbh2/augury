@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Augury - prophecies judged by consensus</title>
+<meta name="description" content="Cast a prophecy on GenLayer: a verifiable claim and a source. A validator set reads the evidence and rules it true or false. Fly through the constellation of verdicts." />
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://rsms.me/"><link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<link rel="stylesheet" href="./styles.css?v=2">
+</head>
+<body>
+
+<div id="loader"><div class="loader-glyph"><i class="ph-fill ph-eye"></i></div><div class="loader-text">reading the sky…</div></div>
+
+<!-- HUD top bar -->
+<header class="hud">
+  <a class="brand" href="#top"><span class="brand-mark"><i class="ph-fill ph-eye"></i></span> Augury</a>
+  <div class="hud-stats" id="hudStats"></div>
+  <div class="hud-end">
+    <span id="walletslot"><button class="hbtn" id="connectBtn"><i class="ph-bold ph-wallet"></i> Connect</button></span>
+    <button class="hbtn accent" id="castBtn"><i class="ph-bold ph-sparkle"></i> Cast a prophecy</button>
+  </div>
+</header>
+
+<!-- scroll hint -->
+<div class="scroll-cue" id="scrollCue"><span>scroll to descend</span><i class="ph-bold ph-caret-down"></i></div>
+
+<!-- 3D scene canvas is created by JS, fixed behind -->
+<div class="scroll-container" id="scrollContainer"><!-- sections injected by app.js --></div>
+
+<!-- cast overlay -->
+<div class="overlay" id="castOverlay" hidden>
+  <div class="cast-card">
+    <button class="ov-x" id="castX"><i class="ph-bold ph-x"></i></button>
+    <h3>Cast a prophecy</h3>
+    <p class="cast-sub">A claim the world can check, and a public source that will settle it.</p>
+    <label>The claim</label>
+    <textarea id="cClaim" maxlength="180" placeholder="e.g. The tallest waterfall on Earth is Angel Falls."></textarea>
+    <label>Source URL</label>
+    <input id="cUrl" placeholder="https://… a page that proves or disproves it" />
+    <button class="hbtn accent wide" id="castSubmit"><i class="ph-bold ph-sparkle"></i> Cast into the sky</button>
+  </div>
+</div>
+
+<div id="log"></div>
+<script type="module" src="./app.js?v=2"></script>
+</body>
+</html>
