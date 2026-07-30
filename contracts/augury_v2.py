@@ -170,6 +170,7 @@ def _dispute_prompt(kind, title, outcome_status, prior_summary, claim, evidence_
         "\n" + kind.upper() + " EVIDENCE (untrusted, rendered page text):\n" + evidence_txt +
         "\nReply with ONE JSON object only: {\"ruling\":\"" + accepted + "\",\"confidenceDeltaBps\":<int -10000..10000>,"
         "\"reason\":\"short neutral reason\",\"riskFlags\":[\"...\"],\"reasoningDigest\":\"public conclusion only\"}"
+        + "\nRequired revisedVerdict options: supported|weak|contradicted|inconclusive."
     )
 
 
@@ -186,10 +187,12 @@ class AuguryScenario(gl.Contract):
     idx_status: TreeMap[str, str]
     idx_seer: TreeMap[str, str]
     recent_ids: DynArray[str]
+    admin: str
     clock: u256
 
     def __init__(self) -> None:
         self.clock = 0
+        self.admin = gl.message.sender_address.as_hex
 
     # ── index helpers ──
     def _ilist(self, tree: TreeMap[str, str], key: str) -> list:
@@ -235,8 +238,28 @@ class AuguryScenario(gl.Contract):
         sc["status"] = new_status
 
     def _require_owner(self, sc: dict, actor: str) -> None:
-        if sc["seer"].lower() != actor.lower():
-            raise Exception("unauthorized")
+        if str(actor).lower() != self.admin.lower() and str(sc["seer"]).lower() != str(actor).lower():
+            raise Exception("record_operator_only")
+
+
+    def _require_admin(self) -> None:
+        if gl.message.sender_address.as_hex.lower() != self.admin.lower():
+            raise Exception("admin_only")
+
+    def _has_open_filings(self, record: dict) -> bool:
+        for challenge_id in record.get("challengeIds", []):
+            try:
+                if json.loads(self.challenges[int(challenge_id)]).get("status") == "open":
+                    return True
+            except Exception:
+                continue
+        for appeal_id in record.get("appealIds", []):
+            try:
+                if json.loads(self.appeals[int(appeal_id)]).get("status") == "open":
+                    return True
+            except Exception:
+                continue
+        return False
 
     def _require_mutable(self, sc: dict) -> None:
         if sc["status"] in ("FINALIZED", "ARCHIVED"):
@@ -370,6 +393,7 @@ class AuguryScenario(gl.Contract):
         self.clock += 1
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
+        self._require_owner(sc, actor)
         self._require_mutable(sc)
         if sc["status"] not in ("DRAFT", "OPEN", "SIGNALS_GATHERED", "PREDICTED"):
             raise Exception("invalid_transition")
@@ -394,6 +418,7 @@ class AuguryScenario(gl.Contract):
         self.clock += 1
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
+        self._require_owner(sc, actor)
         self._require_mutable(sc)
         body = _s(text, 240)
         if body == "":
@@ -424,6 +449,7 @@ class AuguryScenario(gl.Contract):
         self.clock += 1
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
+        self._require_owner(sc, actor)
         self._require_mutable(sc)
         if sc["status"] not in ("SIGNALS_GATHERED", "OPEN", "PREDICTED"):
             raise Exception("invalid_transition")
@@ -444,6 +470,7 @@ class AuguryScenario(gl.Contract):
         self.clock += 1
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
+        self._require_owner(sc, actor)
         self._require_mutable(sc)
         if sc["status"] not in ("PREDICTED", "SIGNALS_GATHERED", "REVIEWED"):
             raise Exception("invalid_transition")
@@ -530,6 +557,7 @@ class AuguryScenario(gl.Contract):
         self.clock += 1
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
+        self._require_owner(sc, actor)
         if sc["status"] != "CHALLENGE_WINDOW":
             raise Exception("invalid_transition")
         ch = self._load_challenge(challenge_id)
@@ -550,7 +578,9 @@ class AuguryScenario(gl.Contract):
             except Exception:
                 txt = "[source unavailable]"
             raw = gl.nondet.exec_prompt(_dispute_prompt("challenge", title, oc, summ, claim, txt), response_format="json")
-            return json.dumps(_norm_ruling(raw, ("accepted", "rejected", "partially_accepted", "inconclusive"), "inconclusive"), sort_keys=True)
+            normalized = _norm_ruling(raw, ("accepted", "rejected", "partially_accepted", "inconclusive"), "inconclusive")
+            normalized["revisedVerdict"] = _s(raw.get("revisedVerdict", raw.get("revisedOutcome", "")), 40).lower() if isinstance(raw, dict) else ""
+            return json.dumps(normalized, sort_keys=True)
 
         res = json.loads(gl.eq_principle.prompt_comparative(leader, "Equal if same ruling."))
         ch["status"] = res["ruling"]
@@ -560,6 +590,10 @@ class AuguryScenario(gl.Contract):
         self.challenges[int(challenge_id)] = json.dumps(ch)
         sc["confidenceBps"] = max(0, min(10000, int(sc["confidenceBps"]) + int(res["confidenceDeltaBps"])))
         if res["ruling"] in ("accepted", "partially_accepted"):
+            revised = str(res.get("revisedVerdict", "")).lower()
+            if revised not in ("supported", "weak", "contradicted", "inconclusive",):
+                revised = sc["outcomeVerdict"]
+            sc["outcomeVerdict"] = revised
             self._rep_bump(ch["challenger"], 40, "successfulChallenges")
         elif res["ruling"] == "rejected":
             self._rep_bump(ch["challenger"], -30, "failedChallenges")
@@ -572,6 +606,8 @@ class AuguryScenario(gl.Contract):
         self.clock += 1
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
+        if self._has_open_filings(sc):
+            raise Exception("open_filing_blocks_appeal")
         if sc["status"] not in ("CHALLENGE_WINDOW", "APPEALED"):
             raise Exception("invalid_transition")
         r = _s(reason, 600)
@@ -595,6 +631,7 @@ class AuguryScenario(gl.Contract):
         self.clock += 1
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
+        self._require_owner(sc, actor)
         if sc["status"] != "APPEALED":
             raise Exception("invalid_transition")
         ap = self._load_appeal(appeal_id)
@@ -615,7 +652,9 @@ class AuguryScenario(gl.Contract):
             except Exception:
                 txt = "[source unavailable]"
             raw = gl.nondet.exec_prompt(_dispute_prompt("appeal", title, oc, summ, reason, txt), response_format="json")
-            return json.dumps(_norm_ruling(raw, ("granted", "denied", "partially_granted", "inconclusive"), "inconclusive"), sort_keys=True)
+            normalized = _norm_ruling(raw, ("granted", "denied", "partially_granted", "inconclusive"), "inconclusive")
+            normalized["revisedVerdict"] = _s(raw.get("revisedVerdict", raw.get("revisedOutcome", "")), 40).lower() if isinstance(raw, dict) else ""
+            return json.dumps(normalized, sort_keys=True)
 
         res = json.loads(gl.eq_principle.prompt_comparative(leader, "Equal if same ruling."))
         ap["status"] = res["ruling"]
@@ -625,6 +664,10 @@ class AuguryScenario(gl.Contract):
         self.appeals[int(appeal_id)] = json.dumps(ap)
         sc["confidenceBps"] = max(0, min(10000, int(sc["confidenceBps"]) + int(res["confidenceDeltaBps"])))
         if res["ruling"] in ("granted", "partially_granted"):
+            revised = str(res.get("revisedVerdict", "")).lower()
+            if revised not in ("supported", "weak", "contradicted", "inconclusive",):
+                revised = sc["outcomeVerdict"]
+            sc["outcomeVerdict"] = revised
             self._rep_bump(ap["appellant"], 30, "")
         before = sc["status"]
         self._set_status(sc, "CHALLENGE_WINDOW")
@@ -638,6 +681,8 @@ class AuguryScenario(gl.Contract):
         actor = gl.message.sender_address.as_hex
         sc = self._load_scenario(scenario_id)
         self._require_owner(sc, actor)
+        if self._has_open_filings(sc):
+            raise Exception("open_filing_blocks_finalize")
         if sc["status"] not in ("REVIEWED", "PREDICTED", "CHALLENGE_WINDOW"):
             raise Exception("invalid_transition")
         if sc["outcomeVerdict"] == "unreviewed":

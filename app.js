@@ -1,5 +1,6 @@
 import { makeReader, write, connectWallet, activeAccount, short, fmtErr }
-  from "../shared/genlayer-lite.js";
+  from "./shared/genlayer-lite.js";
+import { mountReviewDesk } from "./shared/review-desk.js";
 
 const CONTRACT = "0xA83926e5B73b8e64fF3Cbc0A464FF793001706eD";
 const { read } = makeReader(CONTRACT);
@@ -9,6 +10,16 @@ const ST = {
   hex: [0x3fc6ff, 0xffd24a, 0xff5d6c],
 };
 const $ = (id) => document.getElementById(id);
+
+queueMicrotask(() => mountReviewDesk({
+  contract: CONTRACT, read, write, ensureWallet, fmtErr,
+  entity: "Scenario", countMethod: "get_scenario_count", recordMethod: "get_scenario",
+  openWindowMethod: "open_challenge_window", submitChallengeMethod: "submit_challenge", resolveChallengeMethod: "resolve_challenge_with_genlayer",
+  submitAppealMethod: "submit_appeal", resolveAppealMethod: "resolve_appeal_with_genlayer", finalMethod: "finalize_scenario", archiveMethod: "archive_scenario",
+  variant: "terminal", kicker: "Scenario red-team", title: "Augury counter-signal console",
+  intro: "Put the forecast under pressure with a competing signal, resolve the resulting review, and finalize only after uncertainty has a recorded answer.",
+  finalLabel: "Finalize scenario", archiveLabel: "Archive scenario",
+}));
 const esc = (s) => (s || "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const hostOf = (u) => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (_) { return u; } };
 
@@ -27,10 +38,10 @@ function toast(msg, kind = "", title = "augury") {
 
 /* ----------------- data ----------------- */
 async function load() {
-  stats = await read("get_stats");
-  const n = Number(await read("get_prophecy_count"));
-  const out = [];
-  for (let i = 0; i < n; i++) out.push({ id: i, ...(await read("get_prophecy", [i])) });
+  const [statsRaw, countRaw] = await Promise.all([read("get_stats"), read("get_prophecy_count")]);
+  stats = statsRaw;
+  const n = Number(countRaw);
+  const out = await Promise.all(Array.from({ length: n }, (_, i) => read("get_prophecy", [i]).then((record) => ({ id: i, ...record }))));
   prophecies = out;
 }
 
@@ -196,8 +207,8 @@ function openCast() { $("castOverlay").hidden = false; }
 function closeCast() { $("castOverlay").hidden = true; }
 async function doReveal(id) {
   if (!confirm("Read this prophecy? Validators inspect the source and rule it true or false. Calls a real LLM consensus.")) return;
-  toast("The validators are reading the source…", "", "reveal");
-  try { await ensureWallet(); await write(CONTRACT, "reveal", [id]); toast("The sky has spoken. Re-reading…", "ok"); setTimeout(() => location.reload(), 1200); }
+  toast("The validators are reading the source...", "", "reveal");
+  try { await ensureWallet(); await write(CONTRACT, "reveal", [id]); toast("The sky has spoken. Re-reading...", "ok"); setTimeout(() => location.reload(), 1200); }
   catch (e) { toast(fmtErr(e), "err"); }
 }
 async function doCast() {
@@ -205,7 +216,7 @@ async function doCast() {
   if (!claim) return toast("Write the claim.", "err");
   if (!url) return toast("Add a source URL.", "err");
   const btn = $("castSubmit"); btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> casting';
-  try { await ensureWallet(); await write(CONTRACT, "cast", [claim, url]); toast("Cast into the sky. Re-reading…", "ok"); setTimeout(() => location.reload(), 1200); }
+  try { await ensureWallet(); await write(CONTRACT, "cast", [claim, url]); toast("Cast into the sky. Re-reading...", "ok"); setTimeout(() => location.reload(), 1200); }
   catch (e) { toast(fmtErr(e), "err"); btn.disabled = false; btn.innerHTML = "Cast into the sky"; }
 }
 
@@ -238,7 +249,13 @@ if (window.ethereum) window.ethereum.on?.("accountsChanged", refreshWallet);
 
 (async () => {
   await refreshWallet();
-  try { await load(); } catch (e) { toast("Could not reach the chain. " + fmtErr(e), "err"); }
+  try {
+    await load();
+  } catch (e) {
+    stats = { total: 0, fulfilled: 0, void: 0, pending: 0 };
+    prophecies = [];
+    toast("Could not reach the chain. " + fmtErr(e), "err");
+  }
   renderHud();
   buildScene();
   buildSections();
