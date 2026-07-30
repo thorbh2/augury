@@ -1,4 +1,4 @@
-﻿// genlayer-lite.js - a tiny shared client for the static project frontends.
+// genlayer-lite.js - a tiny shared client for the static project frontends.
 // Reads use the locally bundled genlayer-js client. Writes go through the connected
 // wallet (MetaMask), with the gas fields forced to legacy gasPrice=0 so the
 // wallet's gas oracle cannot wrongly claim "insufficient funds for fees" on a
@@ -33,10 +33,20 @@ export async function withRetry(fn, tries = 1, timeoutMs = 5500) {
   throw last;
 }
 
+export function normalizeReadResult(value) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed || (trimmed[0] !== "{" && trimmed[0] !== "[")) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch (_) {
+    return value;
+  }
+}
 export function makeReader(address) {
   return {
     read: (functionName, args = []) =>
-      withRetry(() => reader.readContract({ address, functionName, args })),
+      withRetry(() => reader.readContract({ address, functionName, args })).then(normalizeReadResult),
   };
 }
 
