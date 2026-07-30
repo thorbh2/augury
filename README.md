@@ -8,8 +8,8 @@ Augury is a scenario desk for uncertain outcomes. It records signals and assumpt
 
 | Surface | Link |
 | --- | --- |
-| Live app | https://assmore22-augury.vercel.app |
-| GitHub | https://github.com/assmore22/augury |
+| Live app | https://thorbh2-augury.vercel.app |
+| GitHub | https://github.com/thorbh2/augury |
 | Contract | https://explorer-studio.genlayer.com/address/0xA83926e5B73b8e64fF3Cbc0A464FF793001706eD |
 
 ## Chain Record

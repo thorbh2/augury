@@ -10,6 +10,20 @@ const ST = {
   hex: [0x3fc6ff, 0xffd24a, 0xff5d6c],
 };
 const $ = (id) => document.getElementById(id);
+const asObject = (value) => {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  if (typeof value !== "string" || !value.trim()) return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+};
+const asNumber = (value, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
 
 queueMicrotask(() => mountReviewDesk({
   contract: CONTRACT, read, write, ensureWallet, fmtErr,
@@ -39,9 +53,22 @@ function toast(msg, kind = "", title = "augury") {
 /* ----------------- data ----------------- */
 async function load() {
   const [statsRaw, countRaw] = await Promise.all([read("get_stats"), read("get_prophecy_count")]);
-  stats = statsRaw;
-  const n = Number(countRaw);
-  const out = await Promise.all(Array.from({ length: n }, (_, i) => read("get_prophecy", [i]).then((record) => ({ id: i, ...record }))));
+  const parsedStats = asObject(statsRaw);
+  stats = {
+    total: asNumber(parsedStats.total),
+    fulfilled: asNumber(parsedStats.fulfilled),
+    void: asNumber(parsedStats.void),
+    pending: asNumber(parsedStats.pending),
+  };
+  const n = Math.max(0, asNumber(countRaw));
+  const out = await Promise.all(Array.from({ length: n }, async (_, i) => {
+    const record = asObject(await read("get_prophecy", [i]));
+    return {
+      id: i,
+      ...record,
+      status: Math.max(0, Math.min(2, asNumber(record.status))),
+    };
+  }));
   prophecies = out;
 }
 
